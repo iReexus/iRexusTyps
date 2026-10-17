@@ -164,6 +164,47 @@ if (result?.exists) {
 
 Untuk kirim ke grup, pakai JID grup (`...@g.us`) — bisa didapat dari `msg.key.remoteJid` di `messages.upsert`.
 
+## Button / Pesan Interaktif
+
+Format button lama (`buttonsMessage`, `templateMessage`) sudah tidak didukung WhatsApp dan helper-nya tidak ada di library ini. Untuk mengirim button, pakai `interactiveMessage` + `nativeFlowMessage` lewat `generateWAMessageFromContent` dan `sock.relayMessage`:
+
+```js
+import { generateWAMessageFromContent } from 'iRexusTyps'
+
+const msg = generateWAMessageFromContent(
+  jid,
+  {
+    interactiveMessage: {
+      body: { text: 'Pilih menu:' },
+      footer: { text: 'iRexusTyps' },
+      nativeFlowMessage: {
+        buttons: [
+          {
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({ display_text: 'Cek Saldo', id: 'saldo' })
+          },
+          {
+            name: 'cta_url',
+            buttonParamsJson: JSON.stringify({ display_text: 'Buka Web', url: 'https://example.com' })
+          }
+        ]
+      }
+    }
+  },
+  { userJid: sock.user.id }
+)
+
+await sock.relayMessage(jid, msg.message, { messageId: msg.key.id })
+```
+
+Tidak semua tipe button didukung WhatsApp — terutama kalau akun pengirim bukan WhatsApp Business:
+
+- Tampil di akun biasa (non-Business): `quick_reply`, `cta_url`, `cta_copy`, `cta_call`, `single_select`
+- Butuh akun WhatsApp Business: `cta_catalog`, `mpm`, `address_message`, `automated_greeting_message_view_catalog`
+- Butuh fitur khusus (Flow, payment) dan umumnya tidak tampil: `send_location`, `open_webview`, `cta_reminder`, `cta_cancel_reminder`, `call_permission_request`, `wa_payment_transaction_details`, `galaxy_message`
+
+Tipe yang tidak didukung akan muncul sebagai "pesan tidak dapat ditampilkan" di penerima — batasan dari WhatsApp, bukan versi aplikasi penerima. Balasan klik button masuk sebagai `interactiveResponseMessage` di `messages.upsert`. WhatsApp bisa mengubah dukungan dan formatnya kapan saja.
+
 ## Menerima Pesan
 
 ```js
